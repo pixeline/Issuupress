@@ -47,7 +47,7 @@ if (!class_exists('issuuAPI')) {
 				);
 
 				ksort($args);
-				$argumentsAsSignature = $argAsUrlParameters = '';
+				$argAsSignature = $argAsUrlParameters = '';
 
 				foreach($args as $k=>$v){
 					$argAsSignature .=$k.$v;
