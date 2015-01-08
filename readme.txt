@@ -55,6 +55,7 @@ To customize its appearance, use your theme's CSS style.css file.
 == Changelog ==
 
 = 1.3.0 = 
+- Enhancement: add the option to set the display order.
 - Fixed "Notice: has_cap was called with an argument that is deprecated since version 2.0! Usage of user levels by plugins and themes is deprecated. Use roles and capabilities instead."
 - Fixed issues related to the cache file  not being writable
 - Fix: smarter automatic setup on plugin initial configuration

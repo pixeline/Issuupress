@@ -11,9 +11,8 @@ if (!class_exists('issuuAPI')) {
 		var $cacheFolder;
 		var $cacheDuration = 3600; // in seconds
 		var $forceCache = false;
-
-
-
+		var $result_order = 'desc';
+		var $result_orderby = 'publishDate';
 
 		function __construct($key)
 		{
@@ -22,7 +21,9 @@ if (!class_exists('issuuAPI')) {
 			$this->cacheFolder= plugin_dir_path(__FILE__).'cache';
 			$this->issuuCacheFile = $this->cacheFolder . '/issuu.json';
 			$this->cacheDuration = ($key['cacheDuration']!='')? $key['cacheDuration']: $this->cacheDuration;
-			$this->forceCache = ($key['forceCache']!='')? $key['forceCache']: $this->forceCache;
+			$this->forceCache = ($key['forceCache']!='')? $key['forceCache']: $this->forceCache;   
+			$this->result_order = ($key['result_order']!='')? $key['result_order']: $this->result_order;
+			$this->result_orderby = ($key['result_orderby']!='')? $key['result_orderby']: $this->result_orderby;
 		}
 
 		public function getListing()
@@ -38,15 +39,20 @@ if (!class_exists('issuuAPI')) {
 					'format'=>'json',
 					'action'=>'issuu.documents.list',
 					'apiKey'=>$apiKey,
-					'documentSortBy'=>'publishDate',
+					'documentSortBy'=> $this->result_orderby, //'publishDate',
 					'documentStates'=>'A',
 					'pageSize'=>'30',
-					'resultOrder'=>'desc',
+					'resultOrder'=>$this->result_order,
 					'startIndex'=>'0',
 					'access'=>'public'
 				);
 
 				ksort($args);
+/*
+echo '<pre>';
+print_r($args);
+exit;
+*/
 				$argAsSignature = $argAsUrlParameters = '';
 
 				foreach($args as $k=>$v){

@@ -3,7 +3,7 @@
 Plugin Name: issuuPress
 Plugin URI: http://www.pixeline.be
 Description: Displays your Issuu catalog of PDF files in your wordpress posts/pages using a shortcode.
-Version: 1.2.5
+Version: 1.3.0
 Author: Alexandre Plennevaux
 Author URI: http://pixeline.be
 Plugin template by Piers http://soderlind.no/archives/2010/03/04/wordpress-plugin-template/
@@ -26,6 +26,7 @@ if (!class_exists('ap_issuupress')) {
 		var $cacheFolder;
 		var $cacheDuration;
 		var $issuuCacheFile;
+		var $issue_orderby_options;
 		var $options = array();
 		var $localizationDomain = "ap_issuupress";
 
@@ -59,13 +60,30 @@ if (!class_exists('ap_issuupress')) {
 			$this->pluginId = 'issuupress';
 			$this->cacheFolder= plugin_dir_path(__FILE__).'cache';
 			$this->issuuCacheFile = $this->cacheFolder . '/issuu.json';
-
+			// Issuu gives the following parameters to control the order
+			// see: http://developers.issuu.com/api/issuu.document.list.html#responseparameters
+			$this->issue_orderby_options = array(
+				'username' => 'Owner of document',
+				'name' => 'Name of document',
+				'documentId' => 'Unique identifier of the document',
+				'title' => 'Title of the document',
+				'access' => '"public" or "private"',
+				'state' => 'The state of the document',
+				'category' => 'Category to which the content belongs',
+				'type' => 'Physical format of publications',
+				'orgDocType' => 'Format of original file',
+				'orgDocName' => 'The original filename of the uploaded document',
+				'origin' => 'The source of the document',
+				'language' => 'Language Code for the document',
+				'pageCount' => 'The number of pages in the document',
+				'publishDate' => 'Timestamp for when this document was published',
+				'description' => 'Description of the content',
+				'tags' => 'Keywords describing the document',
+				'folders' => 'The folders containing this document'
+			);
 			//Initialize the options
 			$this->getOptions();
-			$this->apiKey = $this->options['ap_issuupress_apikey'];
-			$this->apiSecret = $this->options['ap_issuupress_apisecret'];
-			$this->cacheDuration = $this->options['ap_issuupress_cacheDuration'];
-			$this->no_pdf_message = $this->options['no_pdf_message'];
+
 
 
 			//Admin menu
@@ -83,9 +101,17 @@ if (!class_exists('ap_issuupress')) {
 
 			require_once('issuuAPI.php');
 
-			$issuuAPI = new issuuAPI(array('apiKey'=>$this->apiKey,'apiSecret'=>$this->apiSecret, 'cacheDuration'=>$this->cacheDuration, 'forceCache'=>$forceCache));
-			$result= $issuuAPI->getListing();
-			return $result;
+			$args = array(
+				'apiKey'=>$this->apiKey,
+				'apiSecret'=>$this->apiSecret,
+				'cacheDuration'=>$this->cacheDuration,
+				'forceCache'=>$forceCache,
+				'result_order' => $this->result_order,
+				'result_orderby'=> $this->result_orderby
+			);
+
+			$issuuAPI = new issuuAPI($args);
+			return $issuuAPI->getListing();
 		}
 
 
@@ -111,7 +137,7 @@ if (!class_exists('ap_issuupress')) {
 				$check_message = '<p>'.$check_message.'</p>';
 			}else{
 				$check_message = '<p>Good, your cache file is writable and was last modified on <strong>'.$last_modified_cache.'</strong>.</p>';
-				$check_message .= '<small><code style="font-size:90%">'.$this->issuuCacheFile.'</code></small>';
+				$check_message .= '<small><code style="font-size:90%">'.$this->issuuCacheFile.'</code> <a href="'.$this->pluginUrl.'/cache/issuu.json" target="_blank">view</a></small>';
 			}
 
 			$debug_info = ini_get_all('core',false);
@@ -126,21 +152,32 @@ if (!class_exists('ap_issuupress')) {
 		 * @return array
 		 */
 		function getOptions() {
-			$theOptions = array('ap_issuupress_apikey'=> '', 'ap_issuupress_apisecret' => '', 'ap_issuupress_cacheDuration'=>86400,'no_pdf_message'=>'No PDF available, sorry!');
+			$theOptions = array(
+				'ap_issuupress_apikey'=> '',
+				'ap_issuupress_apisecret' => '',
+				'ap_issuupress_cacheDuration'=>86400,
+				'no_pdf_message'=>'No PDF available, sorry!',
+				'result_orderby' => 'publishDate',
+				'result_order'=>'desc'
+			);
 			$storedOptions = get_option($this->optionsName);
+			if(!is_array($storedOptions)){
+				// this happens on first installation.
+				$storedOptions = $theOptions;
+			}
 
 			if (is_array($storedOptions) && count($storedOptions)!=count($theOptions)) {
 				// Update the options upon plugin updating. Useful if new options have been introduced.
 				$storedOptions=  array_merge($theOptions,$storedOptions);
 				update_option($this->optionsName,$storedOptions);
 			}
-			if(!is_array($storedOptions)){
-				// this happens on first installation.
-				$storedOptions = $theOptions;
-			}
-
 			$this->options = $storedOptions;
+			$this->apiKey = $this->options['ap_issuupress_apikey'];
+			$this->apiSecret = $this->options['ap_issuupress_apisecret'];
 			$this->cacheDuration = $this->options['ap_issuupress_cacheDuration'];
+			$this->no_pdf_message = $this->options['no_pdf_message'];
+			$this->result_order = $this->options['result_order'];
+			$this->result_orderby = $this->options['result_orderby'];		
 		}
 
 
@@ -198,7 +235,7 @@ if (!class_exists('ap_issuupress')) {
 						$output .= '<h3>'.$ctitle.'</h3>';
 						$output .='<ol class="issuu-list">';
 						$count = 0;
-						
+
 						foreach($docs->_content as $d){
 
 
@@ -349,17 +386,19 @@ if (!class_exists('ap_issuupress')) {
 
 			if($_POST['ap_issuupress_save']){
 				if (! wp_verify_nonce($_POST['_wpnonce'], 'ap_issuupress-update-options') ) die('Whoops! There was a problem with the data you posted. Please go back and try again.');
-				$this->options['ap_issuupress_apikey'] = $_POST['ap_issuupress_apikey'];
-				$this->options['ap_issuupress_apisecret'] = $_POST['ap_issuupress_apisecret'];
-				$this->options['no_pdf_message'] = $_POST['no_pdf_message'];
+				$this->options['ap_issuupress_apikey'] = sanitize_text_field($_POST['ap_issuupress_apikey']);
+				$this->options['ap_issuupress_apisecret'] =sanitize_text_field( $_POST['ap_issuupress_apisecret']);
+				$this->options['no_pdf_message'] = sanitize_text_field($_POST['no_pdf_message']);
 				$this->options['ap_issuupress_cacheDuration'] = (int)$_POST['ap_issuupress_cacheDuration'];
-
+				$this->options['result_orderby'] = sanitize_text_field($_POST['result_orderby']);
+				$this->options['result_order'] = sanitize_text_field($_POST['result_order']);
+				
 				if($_POST['ap_issuupress_refresh_now']==='1'){
 
-// Delete cache file first.
-if (file_exists($this->issuuCacheFile)) {
-        unlink($this->issuuCacheFile);
-    }
+					// Delete cache file first.
+					if (file_exists($this->issuuCacheFile)) {
+						unlink($this->issuuCacheFile);
+					}
 
 					$docs = $this->listDocs(true);
 					if(is_array($docs) && isset($docs['error'])){
@@ -379,14 +418,14 @@ if (file_exists($this->issuuCacheFile)) {
 			<p style="font-weight:bold;"><?php _e('If you like this plugin, please <a href="http://wordpress.org/extend/plugins/issuupress/" target="_blank">give it a good rating</a> on the Wordpress Plugins repository, and if you make any money out of it, <a title="Paypal donation page" target="_blank" href="https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=J9X5B6JUVPBHN&lc=US&item_name=pixeline%20%2d%20Wordpress%20plugin&currency_code=EUR&bn=PP%2dDonationsBF%3abtn_donate_SM%2egif%3aNonHostedGuest">send a few coins over to me</a>!', $this->localizationDomain); ?></p>
 
 			<h2 style="border-top:1px solid #999;padding-top:1em;"><?php _e('Settings', $this->localizationDomain);?></h2>
-
+<p><a href="options-general.php?page=issuupress.php&debug"><?php _e('Show Debug information', $this->localizationDomain); ?></a></p>
 			<?php if(isset($_GET['debug'])){ $this->check_issuu_setup();}?>
-			
+
 			<?php
-				if(!is_file($this->issuuCacheFile)){
-					touch($this->issuuCacheFile);
-				}?>
-			
+			if(!is_file($this->issuuCacheFile)){
+				touch($this->issuuCacheFile);
+			}?>
+
 			<p><?php _e('In order to fetch the list of your documents from your Issuu account, you need to provide your API credentials. Get them <a href="http://issuu.com/services/api/" target="_blank">here</a>.', $this->localizationDomain); ?>
 			</p>
 			<form method="post" id="ap_issuupress_options">
@@ -422,6 +461,42 @@ if (file_exists($this->issuuCacheFile)) {
 							<br><small><?php _e('Tip: 1 day = 86400 sec. , 1 hour = 3600 sec.', $this->localizationDomain); ?></small>
 						</td>
 					</tr>
+
+
+					<tr valign="top">
+						<th width="33%" scope="row"><?php _e('Display order by:', $this->localizationDomain); ?>
+						<br>
+							<small style="font-weight: 100">Default: <code>publishDate</code></small></th>
+						<td>
+							<select onchange="document.getElementById('ap_issuupress_refresh_now').checked = true;" name="result_orderby" id="result_orderby">
+								<option value=""><?php _e('Select:', $this->localizationDomain); ?></option>
+								<?php
+			foreach ($this->issue_orderby_options as $k=>$v){
+
+				$selected = ($this->options['result_orderby'] == $k) ? 'selected': '';
+				echo '<option value="'.$k.'" '.$selected.'>'.$k.' : '.$v.'</option>';
+
+			}
+?>
+							</select>
+
+						</td>
+					</tr>
+
+					<tr valign="top">
+						<th width="33%" scope="row"><?php _e('Order:', $this->localizationDomain); ?>
+						<br>
+							<small style="font-weight: 100">Default: <code>DESC</code></small></th>
+						<td>
+<label><input type="radio" name="result_order" <?php echo ($this->options['result_order']==='desc')? 'checked':'';?> value="desc" onchange="document.getElementById('ap_issuupress_refresh_now').checked = true;"><?php _e('DESC (descending order)', $this->localizationDomain); ?></label>
+<label><input type="radio" name="result_order" <?php echo ($this->options['result_order']==='asc')? 'checked':'';?> value="asc" onchange="document.getElementById('ap_issuupress_refresh_now').checked = true;"><?php _e('ASC (ascending order)', $this->localizationDomain); ?></label>
+
+						</td>
+					</tr>
+
+
+
+
 <tr valign="top">
 						<th width="33%" scope="row"><?php _e('Refresh the cache now? ', $this->localizationDomain); ?></th>
 						<td>
@@ -447,10 +522,10 @@ if (file_exists($this->issuuCacheFile)) {
 <div class="issuupress-block">
 <h2 style="border-top:1px solid #999;padding-top:1em;">Usage: Shortcode</h2>
 <h3>Example</h3>
-<code>[issuupress tag="" viewer="mini" titlebar="false" vmode="" ctitle="Pick a PDF file to read" height="240" bgcolor="FFFFFF"]</code>
+<code>[issuupress viewer="mini" titlebar="false" vmode="" ctitle="Pick a PDF file to read" height="240" bgcolor="FFFFFF"]</code>
 <h3>Options</h3>
 <ul>
-	<li><strong>tag=""</strong> :  If you want, you can restrict the list to only pdf with the provided tag. <em>Default: "".</em></li>
+<!-- 	<li><strong>tag=""</strong> :  If you want, you can restrict the list to only pdf with the provided tag. <em>Default: "".</em></li> -->
 	<li><strong>viewer="mini"</strong> : Possible values: "no","mini","presentation" or "window". <em>Default: "mini".</em></li>
 	<li><strong>titlebar="false"</strong> : Displays the PDF's titlebar. Possible values: "true", "false". <em>Default: "false".</em></li>
 	<li><strong>vmode=""</strong> : Displays pages next to each other, or underneath each other ("single"). Possible values: "single", "". <em>Default: "".</em></li>
