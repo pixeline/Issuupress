@@ -3,7 +3,7 @@ Contributors: pixeline
 Donate link: http://goo.gl/7L2ua
 Tags: issuu,pdf,catalog,shortcode
 Requires at least: 2.9.2
-Tested up to: 3.4
+Tested up to: 4.1
 Stable tag: trunk
 
 Displays your Issuu-hosted catalog of PDF files in your wordpress posts/pages using a shortcode.
@@ -55,12 +55,13 @@ To customize its appearance, use your theme's CSS style.css file.
 == Changelog ==
 
 = 1.3.0 = 
-- Enhancement: add the option to set the display order.
-- Fixed "Notice: has_cap was called with an argument that is deprecated since version 2.0! Usage of user levels by plugins and themes is deprecated. Use roles and capabilities instead."
+- Enhancement: added the option to only fetch public/private or both documents from your Issuu account.
+- Enhancement: added the option to set the display order.
+- Fixed "Notice: has_cap"
 - Fixed issues related to the cache file  not being writable
 - Fix: smarter automatic setup on plugin initial configuration
 - Fix: use "https" url instead of http to remove security warning on SSL websites.
-- Improvement: add "&debug" to the settings page url to display a Debug box with useful information.
+- Improvement: add "&debug" to the settings page url to display a Debug box with useful information (or simply click on the "View Debug information" link in the Settings screen.
 
 = 1.2.5 = 
 - removed causes for php notices.

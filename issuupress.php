@@ -22,6 +22,7 @@ if (!class_exists('ap_issuupress')) {
 		var $optionsName = 'ap_issuupress_options';
 		var $apiKey;
 		var $apiSecret;
+		var $result_access;
 		var $filterByTag;
 		var $cacheFolder;
 		var $cacheDuration;
@@ -107,7 +108,8 @@ if (!class_exists('ap_issuupress')) {
 				'cacheDuration'=>$this->cacheDuration,
 				'forceCache'=>$forceCache,
 				'result_order' => $this->result_order,
-				'result_orderby'=> $this->result_orderby
+				'result_orderby'=> $this->result_orderby,
+				'result_access'=>$this->result_access
 			);
 
 			$issuuAPI = new issuuAPI($args);
@@ -158,7 +160,8 @@ if (!class_exists('ap_issuupress')) {
 				'ap_issuupress_cacheDuration'=>86400,
 				'no_pdf_message'=>'No PDF available, sorry!',
 				'result_orderby' => 'publishDate',
-				'result_order'=>'desc'
+				'result_order'=>'desc',
+				'result_access'=>'public'
 			);
 			$storedOptions = get_option($this->optionsName);
 			if(!is_array($storedOptions)){
@@ -178,6 +181,7 @@ if (!class_exists('ap_issuupress')) {
 			$this->no_pdf_message = $this->options['no_pdf_message'];
 			$this->result_order = $this->options['result_order'];
 			$this->result_orderby = $this->options['result_orderby'];		
+			$this->result_access = $this->options['result_access'];		
 		}
 
 
@@ -276,7 +280,7 @@ if (!class_exists('ap_issuupress')) {
 					}
 					else{
 						// No Documents in the json file.
-						echo '<div id="issuupress">'._("No document found in your Issuu account").'</div>';
+						echo '<div id="issuupress">'._("No document found.").'</div>';
 
 					}
 				}
@@ -392,6 +396,7 @@ if (!class_exists('ap_issuupress')) {
 				$this->options['ap_issuupress_cacheDuration'] = (int)$_POST['ap_issuupress_cacheDuration'];
 				$this->options['result_orderby'] = sanitize_text_field($_POST['result_orderby']);
 				$this->options['result_order'] = sanitize_text_field($_POST['result_order']);
+				$this->options['result_access'] = sanitize_text_field($_POST['result_access']);
 				
 				if($_POST['ap_issuupress_refresh_now']==='1'){
 
@@ -496,6 +501,17 @@ if (!class_exists('ap_issuupress')) {
 
 
 
+					<tr valign="top">
+						<th width="33%" scope="row"><?php _e('Which documents would you like to display?', $this->localizationDomain); ?>
+						<br>
+							<small style="font-weight: 100">Default: <code>public only</code></small></th>
+						<td>
+<label><input type="radio" name="result_access" <?php echo ($this->options['result_access']==='both')? 'checked':'';?> value="both" onchange="document.getElementById('ap_issuupress_refresh_now').checked = true;"><?php _e('Both public and private documents', $this->localizationDomain); ?></label>
+<label><input type="radio" name="result_access" <?php echo ($this->options['result_access']==='private')? 'checked':'';?> value="private" onchange="document.getElementById('ap_issuupress_refresh_now').checked = true;"><?php _e('Only private documents', $this->localizationDomain); ?></label>
+<label><input type="radio" name="result_access" <?php echo ($this->options['result_access']==='public')? 'checked':'';?> value="public" onchange="document.getElementById('ap_issuupress_refresh_now').checked = true;"><?php _e('Only public documents', $this->localizationDomain); ?></label>
+
+						</td>
+					</tr>
 
 <tr valign="top">
 						<th width="33%" scope="row"><?php _e('Refresh the cache now? ', $this->localizationDomain); ?></th>

@@ -13,6 +13,7 @@ if (!class_exists('issuuAPI')) {
 		var $forceCache = false;
 		var $result_order = 'desc';
 		var $result_orderby = 'publishDate';
+		var $result_access = 'public';
 
 		function __construct($key)
 		{
@@ -24,6 +25,7 @@ if (!class_exists('issuuAPI')) {
 			$this->forceCache = ($key['forceCache']!='')? $key['forceCache']: $this->forceCache;   
 			$this->result_order = ($key['result_order']!='')? $key['result_order']: $this->result_order;
 			$this->result_orderby = ($key['result_orderby']!='')? $key['result_orderby']: $this->result_orderby;
+			$this->result_access = ($key['result_access']!='')? $key['result_access']: $this->result_access;
 		}
 
 		public function getListing()
@@ -44,7 +46,7 @@ if (!class_exists('issuuAPI')) {
 					'pageSize'=>'30',
 					'resultOrder'=>$this->result_order,
 					'startIndex'=>'0',
-					'access'=>'public'
+					'access'=>$this->result_access
 				);
 
 				ksort($args);
